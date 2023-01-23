@@ -1,0 +1,11 @@
+### GET PID
+GET http://localhost:5000/id
+
+### READY
+GET http://localhost:5000/ready
+
+### HEALTHY
+GET http://localhost:5000/health
+
+### STOP REDIS
+GET http://localhost:5000/redis/stop
