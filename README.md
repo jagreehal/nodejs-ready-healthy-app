@@ -2,7 +2,7 @@
 
 This is a Node.js app that exposes both health and readiness endpoints.
 
-You shouldn't stop your Node.js from starting is connections to external services are not available. Instead, you should expose a readiness endpoint that returns a 200 status code when the app is ready to serve requests.
+You shouldn't stop your Node.js from starting if connections to external services are not available. Instead, you should expose a readiness endpoint that returns a 200 status code when the app is ready to serve requests.
 
 ## Health
 

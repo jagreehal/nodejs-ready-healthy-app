@@ -1,46 +1,62 @@
-import express, { Response } from 'express';
+import express from 'express';
+import redis from 'ioredis';
 import { logger } from './logger';
-import { Cache } from './cache';
+
+import { MongoClient } from 'mongodb';
+import { redisHealthCheck } from './services/cache';
+import { mongoHealthCheck } from './services/mongo';
 
 const id = process.pid;
 
 export type createAppProps = {
-  cache: Cache;
+  mongo: MongoClient;
+  redis: redis;
 };
 
 export const createApp = async ({
-  cache,
+  mongo,
+  redis,
 }: createAppProps): Promise<express.Application> => {
   const app = express();
+
+  async function doHealthCheck() {
+    const results = await Promise.all([
+      redisHealthCheck(redis),
+      mongoHealthCheck(mongo),
+    ]);
+
+    return {
+      isHealthy: results.every((r) => r.status === 'ok'),
+      results,
+    };
+  }
 
   app.get('/id', async (req, res) => {
     logger.info(`id: ${id}`);
     res.json({ id });
   });
 
-  app.get('/ready', (req, res) => {
-    return cache.isConnected()
-      ? res.status(200).send({ cache: true })
-      : res.status(500).send({ cache: false });
-  });
-
-  app.get('/health', async (req, res) => {
-    try {
-      await cache.redisClient.ping();
-      res.status(200).send('Healthy');
-    } catch (error) {
-      res.status(500).send('Unhealthy');
-    }
-  });
-
   app.get('/increment', async (request, reply) => {
-    const value = await cache.redisClient.incr('counter');
+    const value = await redis.incr('counter');
     reply.send({ counter: value });
   });
 
   app.get('/redis/stop', async (req, res) => {
-    await cache.redisClient.quit();
+    await redis.quit();
     res.status(200).send();
+  });
+
+  app.get('/ready', async (req, res) => {
+    const { isHealthy } = await doHealthCheck();
+    const statusCode = isHealthy ? 200 : 500;
+    res.status(statusCode).send();
+  });
+
+  app.get('/healthcheck', async (req, res) => {
+    const { isHealthy, results } = await doHealthCheck();
+
+    const statusCode = isHealthy ? 200 : 500;
+    res.status(statusCode).send(results);
   });
 
   return app;

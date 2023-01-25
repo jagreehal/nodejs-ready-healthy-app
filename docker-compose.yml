@@ -5,3 +5,7 @@ services:
     image: 'redis:7-alpine'
     ports:
       - '6379:6379'
+  mongodb:
+    image: mongo:6.0.3
+    ports:
+      - '27017:27017'
