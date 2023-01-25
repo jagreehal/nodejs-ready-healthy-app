@@ -5,17 +5,17 @@ import { createApp } from './app';
 import { logger } from './logger';
 import config from './config';
 import { initMongo } from './services/mongo';
-import { initCache } from './services/cache';
+import { initRedis } from './services/cache';
 
 const { HOST, PORT } = config;
 const id = process.pid;
 
 async function start() {
-  const cacheInstance = initCache();
-  const mongoInstance = initMongo();
+  const redis = initRedis();
+  const mongo = initMongo();
   const app = await createApp({
-    cache: cacheInstance,
-    mongo: mongoInstance,
+    redis,
+    mongo,
   });
   return new Promise((resolve, reject) => {
     app.listen(PORT, HOST).once('listening', resolve).once('error', reject);

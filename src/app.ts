@@ -1,52 +1,62 @@
 import express from 'express';
-import { Mongo } from './services/mongo';
-import { Cache } from './services/cache';
+import redis from 'ioredis';
 import { logger } from './logger';
-import { checkServicesAreConnected } from './utils';
+
+import { MongoClient } from 'mongodb';
+import { redisHealthCheck } from './services/cache';
+import { mongoHealthCheck } from './services/mongo';
 
 const id = process.pid;
 
 export type createAppProps = {
-  cache: Cache;
-  mongo: Mongo;
+  mongo: MongoClient;
+  redis: redis;
 };
 
 export const createApp = async ({
-  cache,
   mongo,
+  redis,
 }: createAppProps): Promise<express.Application> => {
   const app = express();
-  const services = [cache, mongo];
+
+  async function doHealthCheck() {
+    const results = await Promise.all([
+      redisHealthCheck(redis),
+      mongoHealthCheck(mongo),
+    ]);
+
+    return {
+      isHealthy: results.every((r) => r.status === 'ok'),
+      results,
+    };
+  }
 
   app.get('/id', async (req, res) => {
     logger.info(`id: ${id}`);
     res.json({ id });
   });
 
-  app.get('/ready', async (req, res) => {
-    const result = await checkServicesAreConnected(services);
-
-    return result.every((r) => r.status === 'connected')
-      ? res.status(200).send('ok')
-      : res.status(500).send('not ready');
-  });
-
-  app.get('/health', async (req, res) => {
-    const result = await checkServicesAreConnected(services);
-
-    return result.every((r) => r.status === 'connected')
-      ? res.status(200).send(result)
-      : res.status(500).send(result);
-  });
-
   app.get('/increment', async (request, reply) => {
-    const value = await cache.cache.incr('counter');
+    const value = await redis.incr('counter');
     reply.send({ counter: value });
   });
 
   app.get('/redis/stop', async (req, res) => {
-    await cache.cache.quit();
+    await redis.quit();
     res.status(200).send();
+  });
+
+  app.get('/ready', async (req, res) => {
+    const { isHealthy } = await doHealthCheck();
+    const statusCode = isHealthy ? 200 : 500;
+    res.status(statusCode).send();
+  });
+
+  app.get('/healthcheck', async (req, res) => {
+    const { isHealthy, results } = await doHealthCheck();
+
+    const statusCode = isHealthy ? 200 : 500;
+    res.status(statusCode).send(results);
   });
 
   return app;

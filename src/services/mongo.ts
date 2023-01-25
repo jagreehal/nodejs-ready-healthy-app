@@ -1,36 +1,26 @@
 import { MongoClient } from 'mongodb';
 import config from '../config';
 import { logger } from '../logger';
-import { AppService, IsConnectedResult } from '../types';
+import { HealthCheckResult } from '../types';
 import { isConnectedCheckWithTimeoutFunction } from '../utils';
-
-export let _mongoClient: MongoClient;
 
 export const SERVICE_NAME = 'mongo';
 
-export interface Mongo extends AppService {
-  mongoClient: MongoClient;
-}
-
-async function connectMongo(retryAttempt = 1) {
+async function connectMongo(mongoClient: MongoClient, retryAttempt = 1) {
   try {
-    await _mongoClient.connect();
+    await mongoClient.connect();
     logger.info('Connected to MONGO');
   } catch (err) {
     logger.error('Error connecting to MONGO', err);
     setTimeout(() => {
-      connectMongo(retryAttempt + 1);
+      connectMongo(mongoClient, retryAttempt + 1);
     }, Math.min(1000, 200 * retryAttempt));
   }
 }
 
-export function initMongo(mongoClient = createMongoClient()): Mongo {
-  _mongoClient = mongoClient;
-  connectMongo();
-  return {
-    isConnected,
-    mongoClient: _mongoClient,
-  };
+export function initMongo(mongoClient = createMongoClient()): MongoClient {
+  connectMongo(mongoClient);
+  return mongoClient;
 }
 
 export function createMongoClient() {
@@ -40,12 +30,14 @@ export function createMongoClient() {
   return mongoClient;
 }
 
-async function isConnected(): Promise<IsConnectedResult> {
+export async function mongoHealthCheck(
+  mongoClient: MongoClient
+): Promise<HealthCheckResult> {
   return isConnectedCheckWithTimeoutFunction(SERVICE_NAME, async () => {
-    const r = await _mongoClient.db().command({ ping: 1 });
+    const r = await mongoClient.db().command({ ping: 1 });
     return {
       name: SERVICE_NAME,
-      status: r.ok === 1 ? 'connected' : 'not-connected',
+      status: r.ok === 1 ? 'ok' : 'error',
     };
   });
 }

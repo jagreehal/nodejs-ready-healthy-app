@@ -4,8 +4,8 @@ GET http://localhost:5000/id
 ### READY
 GET http://localhost:5000/ready
 
-### HEALTHY
-GET http://localhost:5000/health
+### HEALTHCHECK
+GET http://localhost:5000/healthcheck
 
 ### STOP REDIS
 GET http://localhost:5000/redis/stop

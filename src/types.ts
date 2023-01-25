@@ -1,8 +1,4 @@
-export interface IsConnectedResult {
+export interface HealthCheckResult {
   name: string;
-  status: 'connected' | 'not-connected' | 'error' | 'timed-out';
-}
-
-export interface AppService {
-  isConnected: () => Promise<IsConnectedResult>;
+  status: 'ok' | 'error' | 'timed-out';
 }

@@ -1,42 +1,33 @@
 import { logger } from '../logger';
 import redis, { Redis } from 'ioredis';
 import config from '../config';
-import { AppService, IsConnectedResult } from '../types';
 import { isConnectedCheckWithTimeoutFunction } from '../utils';
+import { HealthCheckResult } from '../types';
 
-let _redisClient: redis;
+export const SERVICE_NAME = 'redis';
 
-export const SERVICE_NAME = 'cache';
-
-export interface Cache extends AppService {
-  cache: redis;
+export function initRedis(redisClient = createRedisClient()): redis {
+  connectRedis(redisClient);
+  return redisClient;
 }
 
-async function isConnected(): Promise<IsConnectedResult> {
-  return isConnectedCheckWithTimeoutFunction(SERVICE_NAME, async () => {
-    const r = await _redisClient.ping();
-    return {
-      name: SERVICE_NAME,
-      status: r === 'PONG' ? 'connected' : 'not-connected',
-    };
-  });
-}
-
-async function connectRedis() {
+async function connectRedis(redisClient: redis) {
   try {
-    await _redisClient.connect();
+    await redisClient.connect();
   } catch (err) {
     logger.error('Error connecting to REDIS', err);
   }
 }
 
-export function initCache(redisClient = createRedisClient()): Cache {
-  _redisClient = redisClient;
-  connectRedis();
-  return {
-    isConnected,
-    cache: _redisClient,
-  };
+export async function redisHealthCheck(
+  redisClient: redis
+): Promise<HealthCheckResult> {
+  return isConnectedCheckWithTimeoutFunction(SERVICE_NAME, async () => {
+    return {
+      name: SERVICE_NAME,
+      status: redisClient.status === 'ready' ? 'ok' : 'error',
+    };
+  });
 }
 
 export function createRedisClient() {

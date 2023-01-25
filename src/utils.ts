@@ -1,14 +1,17 @@
 import { logger } from './logger';
-import { AppService, IsConnectedResult } from './types';
+import { HealthCheckResult } from './types';
 
 async function checkIfConnected(
   name: string,
-  f: () => Promise<IsConnectedResult>
-): Promise<IsConnectedResult> {
+  f: () => Promise<HealthCheckResult>
+): Promise<HealthCheckResult> {
+  const _logger = logger.child({ module: 'checkIfConnected' });
   try {
+    _logger.debug(`Checking if ${name} is connected`);
     const result = await f();
     return result;
   } catch (err) {
+    _logger.debug(`Error checking if ${name} is connected`, err);
     return {
       name,
       status: 'error',
@@ -18,11 +21,11 @@ async function checkIfConnected(
 
 export function isConnectedCheckWithTimeoutFunction(
   name,
-  f: () => Promise<IsConnectedResult>
-): Promise<IsConnectedResult> {
+  f: () => Promise<HealthCheckResult>
+): Promise<HealthCheckResult> {
   return Promise.race([
     checkIfConnected(name, f),
-    new Promise<IsConnectedResult>((resolve) => {
+    new Promise<HealthCheckResult>((resolve) => {
       setTimeout(() => {
         resolve({
           name,
@@ -31,18 +34,4 @@ export function isConnectedCheckWithTimeoutFunction(
       }, 5000);
     }),
   ]);
-}
-
-export async function checkServicesAreConnected(
-  services: AppService[]
-): Promise<IsConnectedResult[]> {
-  const data = await Promise.allSettled(
-    services.map((service) => service.isConnected())
-  );
-
-  const response = data.filter(
-    (res) => res.status === 'fulfilled'
-  ) as PromiseFulfilledResult<IsConnectedResult>[];
-
-  return response.map((res) => res.value);
 }
