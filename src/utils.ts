@@ -11,6 +11,7 @@ async function checkIfConnected(
     const result = await f();
     return result;
   } catch (err) {
+    console.log('xxxx', err);
     _logger.debug(`Error checking if ${name} is connected`, err);
     return {
       name,

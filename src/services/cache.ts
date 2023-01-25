@@ -41,15 +41,15 @@ export function createRedisClient() {
   });
 
   redisClient.on('connect', () => {
-    logger.info('Connected to REDIS');
+    logger.info(`Connected to ${SERVICE_NAME}`);
   });
 
   redisClient.on('end', () => {
-    logger.info('Disconnected from REDIS');
+    logger.info(`Connection to ${SERVICE_NAME} ended`);
   });
 
   redisClient.on('close', () => {
-    logger.warn('Connection to REDIS closed');
+    logger.warn(`Connection to ${SERVICE_NAME} closed`);
   });
 
   return redisClient;

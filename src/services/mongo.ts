@@ -9,12 +9,12 @@ export const SERVICE_NAME = 'mongo';
 async function connectMongo(mongoClient: MongoClient, retryAttempt = 1) {
   try {
     await mongoClient.connect();
-    logger.info('Connected to MONGO');
+    logger.info(`Connected to ${SERVICE_NAME}`);
   } catch (err) {
-    logger.error('Error connecting to MONGO', err);
+    logger.error(`Error connecting to ${SERVICE_NAME}`, err);
     setTimeout(() => {
       connectMongo(mongoClient, retryAttempt + 1);
-    }, Math.min(1000, 200 * retryAttempt));
+    }, Math.min(2000, 200 * retryAttempt));
   }
 }
 
