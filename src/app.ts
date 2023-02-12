@@ -1,21 +1,25 @@
 import express from 'express';
 import redis from 'ioredis';
+import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
 
 import { MongoClient } from 'mongodb';
 import { redisHealthCheck } from './services/cache';
 import { mongoHealthCheck } from './services/mongo';
+import { prismaHealthCheck } from './services/prisma';
 
 const id = process.pid;
 
 export type createAppProps = {
   mongo: MongoClient;
   redis: redis;
+  prisma: PrismaClient;
 };
 
 export const createApp = async ({
   mongo,
   redis,
+  prisma,
 }: createAppProps): Promise<express.Application> => {
   const app = express();
 
@@ -23,6 +27,7 @@ export const createApp = async ({
     const results = await Promise.all([
       redisHealthCheck(redis),
       mongoHealthCheck(mongo),
+      prismaHealthCheck(prisma),
     ]);
 
     return {
@@ -44,6 +49,11 @@ export const createApp = async ({
   app.get('/redis/stop', async (req, res) => {
     await redis.quit();
     res.status(200).send();
+  });
+
+  app.get('/prisma', async (req, res) => {
+    const result = await prisma.$queryRaw`SELECT 1`;
+    res.status(200).send({ result });
   });
 
   app.get('/ready', async (req, res) => {
